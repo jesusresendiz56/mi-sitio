@@ -1,299 +1,108 @@
-
-<!DOCTYPE html>
+<!doctype html>
 <html lang="es">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta charset="utf-8">
   <title>Portal de Solicitudes - Seguridad</title>
   <link rel="stylesheet" href="estilo.css">
-
-  <!-- Librería y configuración de Supabase -->
+  
+  <!-- Librería de Supabase y tu configuración -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="supabase-config.js"></script>
 </head>
 <body>
 
-  <!-- REGISTRO E INICIO DE SESIÓN -->
-  <section id="auth-section">
-    <h2>Portal de Solicitudes</h2>
-    <h3>Iniciar sesión / Registro</h3>
+  <!-- Menú de navegación -->
+  <nav>
+    <a href="index.html">Inicio</a> | 
+    <a href="catalogo.html">Catálogo</a> | 
+    <a href="acerca.html">Acerca</a>
+  </nav>
+  <hr>
 
-    <input
-      type="email"
-      id="email"
-      placeholder="Correo electrónico"
-      autocomplete="email"
-    >
+  <!-- Sección de Auth -->
+  <div id="auth-section">
+    <h2>Iniciar Sesión / Registro</h2>
+    <input type="email" id="email" placeholder="Correo electrónico">
+    <input type="password" id="pass" placeholder="Contraseña">
+    <br>
+    <button onclick="registrar()">Crear cuenta</button>
+    <button onclick="entrar()">Iniciar sesión</button>
+    <div id="ml"></div>
+  </div>
 
-    <input
-      type="password"
-      id="pass"
-      placeholder="Contraseña"
-      autocomplete="current-password"
-    >
-
-    <br><br>
-
-    <button type="button" onclick="registrar()">
-      Crear cuenta
-    </button>
-
-    <button type="button" onclick="entrar()">
-      Iniciar sesión
-    </button>
-
-    <p id="ml" role="status"></p>
-  </section>
-
-  <!-- PANEL DE SOLICITUDES -->
-  <section id="app-section" style="display:none;">
+  <!-- Panel de Solicitudes -->
+  <div id="app-section" style="display:none;">
     <h2>Panel de Solicitudes</h2>
-
     <p id="user-display"></p>
-
-    <button type="button" onclick="salir()">
-      Cerrar sesión
-    </button>
-
-    <hr>
-
-    <h3>Nueva solicitud</h3>
-
-    <input
-      type="text"
-      id="titulo"
-      placeholder="Título de la solicitud"
-      maxlength="200"
-    >
-
-    <input
-      type="number"
-      id="monto"
-      placeholder="Monto"
-      min="0.01"
-      max="99999999.99"
-      step="0.01"
-    >
-
-    <button type="button" onclick="crearSolicitud()">
-      Guardar solicitud
-    </button>
-
-    <p id="mensaje-solicitud" role="status"></p>
-  </section>
+    <button onclick="salir()">Cerrar sesión</button>
+    
+    <!-- Formulario de solicitudes -->
+    <br><br>
+    <input type="text" id="titulo" placeholder="Título de la solicitud">
+    <input type="number" id="monto" placeholder="Monto">
+    <button onclick="crearSolicitud()">Guardar Solicitud</button>
+  </div>
 
   <script>
-    // FUNCIONES AUXILIARES
-    function val(id) {
-      return document.getElementById(id).value;
+    function val(id) { return document.getElementById(id).value; }
+    function msg(id, texto, esExito) { 
+      document.getElementById(id).innerText = texto; 
+      document.getElementById(id).style.color = esExito ? 'green' : 'red'; 
     }
 
-    function msg(id, texto, esExito) {
-      const elemento = document.getElementById(id);
-      elemento.textContent = texto;
-      elemento.style.color = esExito ? "green" : "red";
+    function mostrarApp() {
+      document.getElementById('auth-section').style.display = 'none';
+      document.getElementById('app-section').style.display = 'block';
     }
 
-    function mostrarLogin() {
-      document.getElementById("auth-section").style.display = "block";
-      document.getElementById("app-section").style.display = "none";
-      document.getElementById("user-display").textContent = "";
-    }
-
-    // MOSTRAR EL PANEL DEL USUARIO
-    async function mostrarApp() {
-      const { data, error } = await supabase.auth.getUser();
-
-      if (error || !data.user) {
-        mostrarLogin();
-        return;
+    // Al cargar la página, verifica la sesión activa
+    (async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session) {
+        mostrarApp();
+        const { data: { user } } = await supabase.auth.getUser();
+        if(user) document.getElementById('user-display').innerText = "Conectado como: " + user.email;
       }
+    })();
 
-      document.getElementById("auth-section").style.display = "none";
-      document.getElementById("app-section").style.display = "block";
-
-      document.getElementById("user-display").textContent =
-        "Conectado como: " + data.user.email;
-    }
-
-    // COMPROBAR LA SESIÓN AL ABRIR LA PÁGINA
-    async function verificarSesion() {
-      try {
-        const { data, error } = await supabase.auth.getSession();
-
-        if (error) {
-          mostrarLogin();
-          return;
-        }
-
-        if (data.session) {
-          await mostrarApp();
-        } else {
-          mostrarLogin();
-        }
-      } catch (error) {
-        console.error("Error al verificar sesión:", error);
-        mostrarLogin();
-      }
-    }
-
-    // REGISTRAR USUARIO
+    // Registrar cuenta
     async function registrar() {
-      const email = val("email").trim();
-      const password = val("pass");
-
-      if (!email || !password) {
-        msg("ml", "Completa el correo y la contraseña.", false);
-        return;
-      }
-
-      if (password.length < 6) {
-        msg("ml", "La contraseña debe tener al menos 6 caracteres.", false);
-        return;
-      }
-
-      try {
-        const { data, error } = await supabase.auth.signUp({
-          email: email,
-          password: password
-        });
-
-        if (error) {
-          msg("ml", "Error: " + error.message, false);
-          return;
-        }
-
-        if (data.session) {
-          msg("ml", "Cuenta creada correctamente.", true);
-          await mostrarApp();
-        } else {
-          msg(
-            "ml",
-            "Registro procesado. Si se requiere confirmación, revisa tu correo; después inicia sesión.",
-            true
-          );
-        }
-      } catch (error) {
-        msg("ml", "No se pudo completar el registro.", false);
-        console.error(error);
-      }
+      const { error } = await supabase.auth.signUp({ email: val('email'), password: val('pass') });
+      if (error) return msg('ml', 'Error: ' + error.message, false);
+      msg('ml', 'Cuenta creada. Ya puedes iniciar sesión.', true);
     }
 
-    // INICIAR SESIÓN
+    // Iniciar sesión
     async function entrar() {
-      const email = val("email").trim();
-      const password = val("pass");
-
-      if (!email || !password) {
-        msg("ml", "Ingresa tu correo y contraseña.", false);
-        return;
-      }
-
-      try {
-        const { error } = await supabase.auth.signInWithPassword({
-          email: email,
-          password: password
-        });
-
-        if (error) {
-          msg("ml", "Credenciales incorrectas o cuenta no confirmada.", false);
-          return;
-        }
-
-        await mostrarApp();
-      } catch (error) {
-        msg("ml", "Error al iniciar sesión.", false);
-        console.error(error);
-      }
+      const { error } = await supabase.auth.signInWithPassword({ email: val('email'), password: val('pass') });
+      if (error) return msg('ml', 'Credenciales incorrectas', false);
+      mostrarApp();
     }
 
-    // CREAR UNA SOLICITUD
+    // Guardar solicitud asignando el correo
     async function crearSolicitud() {
-      const titulo = val("titulo").trim();
-      const montoTexto = val("monto").trim();
-      const monto = Number(montoTexto);
-
-      if (!titulo) {
-        msg("mensaje-solicitud", "Ingresa un título.", false);
-        return;
-      }
-
-      if (
-        !montoTexto ||
-        !Number.isFinite(monto) ||
-        monto <= 0 ||
-        monto > 99999999.99
-      ) {
-        msg("mensaje-solicitud", "Ingresa un monto válido.", false);
-        return;
-      }
-
-      try {
-        const { data, error: authError } =
-          await supabase.auth.getUser();
-
-        if (authError || !data.user) {
-          msg("mensaje-solicitud", "Debes iniciar sesión.", false);
-          mostrarLogin();
-          return;
-        }
-
-        const { error } = await supabase
-          .from("solicitudes")
-          .insert({
-            titulo: titulo,
-            monto: monto,
-            usuario_email: data.user.email
-          });
-
-        if (error) {
-          msg(
-            "mensaje-solicitud",
-            "Error al guardar: " + error.message,
-            false
-          );
-          return;
-        }
-
-        msg(
-          "mensaje-solicitud",
-          "Solicitud guardada correctamente.",
-          true
-        );
-
-        document.getElementById("titulo").value = "";
-        document.getElementById("monto").value = "";
-
-      } catch (error) {
-        msg("mensaje-solicitud", "Error de conexión.", false);
-        console.error(error);
+      const titulo = val('titulo');
+      const monto = val('monto');
+      const { data: { user } } = await supabase.auth.getUser();
+      
+      const { error } = await supabase.from('solicitudes').insert({ 
+        titulo: titulo, 
+        monto: monto, 
+        usuario_email: user.email 
+      });
+      
+      if (error) {
+        alert('Error al guardar: ' + error.message);
+      } else {
+        alert('Solicitud guardada con éxito');
       }
     }
 
-    // CERRAR SESIÓN
+    // Cerrar sesión
     async function salir() {
-      try {
-        const { error } = await supabase.auth.signOut();
-
-        if (error) {
-          alert("No se pudo cerrar sesión: " + error.message);
-          return;
-        }
-
-        document.getElementById("pass").value = "";
-        document.getElementById("email").value = "";
-        msg("ml", "", true);
-
-        mostrarLogin();
-      } catch (error) {
-        alert("Error al cerrar sesión.");
-        console.error(error);
-      }
+      await supabase.auth.signOut();
+      location.reload();
     }
-
-    // INICIALIZAR EL PORTAL
-    verificarSesion();
   </script>
-
 </body>
 </html>
