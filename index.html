@@ -1,108 +1,454 @@
-<!doctype html>
+
+<!DOCTYPE html>
 <html lang="es">
 <head>
-  <meta charset="utf-8">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Portal de Solicitudes - Seguridad</title>
   <link rel="stylesheet" href="estilo.css">
-  
-  <!-- Librería de Supabase y tu configuración -->
+
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="supabase-config.js"></script>
+
+  <style>
+    .contenedor {
+      max-width: 430px;
+      margin: 35px auto;
+      padding: 25px;
+      border: 1px solid #ddd;
+      border-radius: 10px;
+      background: white;
+      color: #222;
+    }
+
+    .contenedor h2 {
+      text-align: center;
+    }
+
+    .contenedor input {
+      display: block;
+      box-sizing: border-box;
+      width: 100%;
+      padding: 12px;
+      margin: 12px 0;
+      border: 1px solid #ccc;
+      border-radius: 5px;
+    }
+
+    .contenedor button {
+      width: 100%;
+      padding: 12px;
+      margin-top: 10px;
+      cursor: pointer;
+      border: 0;
+      border-radius: 5px;
+      background: #2563eb;
+      color: white;
+    }
+
+    .contenedor a {
+      color: #2563eb;
+      cursor: pointer;
+    }
+
+    .mensaje {
+      margin-top: 15px;
+      text-align: center;
+    }
+
+    #registro-section,
+    #app-section {
+      display: none;
+    }
+  </style>
 </head>
+
 <body>
 
-  <!-- Menú de navegación -->
+  <!-- MENÚ -->
   <nav>
-    <a href="index.html">Inicio</a> | 
-    <a href="catalogo.html">Catálogo</a> | 
+    <a href="index.html">Inicio</a> |
+    <a href="catalogo.html">Catálogo</a> |
     <a href="acerca.html">Acerca</a>
   </nav>
+
   <hr>
 
-  <!-- Sección de Auth -->
-  <div id="auth-section">
-    <h2>Iniciar Sesión / Registro</h2>
-    <input type="email" id="email" placeholder="Correo electrónico">
-    <input type="password" id="pass" placeholder="Contraseña">
-    <br>
-    <button onclick="registrar()">Crear cuenta</button>
-    <button onclick="entrar()">Iniciar sesión</button>
-    <div id="ml"></div>
-  </div>
+  <!-- INICIAR SESIÓN -->
+  <section id="login-section" class="contenedor">
+    <h2>Iniciar sesión</h2>
 
-  <!-- Panel de Solicitudes -->
-  <div id="app-section" style="display:none;">
+    <form id="login-form">
+      <input
+        type="email"
+        id="login-email"
+        placeholder="Correo electrónico"
+        autocomplete="email"
+        required
+      >
+
+      <input
+        type="password"
+        id="login-pass"
+        placeholder="Contraseña"
+        autocomplete="current-password"
+        required
+      >
+
+      <button type="submit">Iniciar sesión</button>
+    </form>
+
+    <p class="mensaje" id="login-mensaje" role="status"></p>
+
+    <p>
+      ¿No tienes cuenta?
+      <a href="#" onclick="mostrarRegistro(); return false;">
+        Regístrate aquí
+      </a>
+    </p>
+  </section>
+
+  <!-- REGISTRO -->
+  <section id="registro-section" class="contenedor">
+    <h2>Crear cuenta</h2>
+
+    <form id="registro-form">
+      <input
+        type="email"
+        id="registro-email"
+        placeholder="Correo electrónico"
+        autocomplete="email"
+        required
+      >
+
+      <input
+        type="password"
+        id="registro-pass"
+        placeholder="Contraseña (mínimo 6 caracteres)"
+        autocomplete="new-password"
+        minlength="6"
+        required
+      >
+
+      <input
+        type="password"
+        id="confirmar-pass"
+        placeholder="Confirmar contraseña"
+        autocomplete="new-password"
+        required
+      >
+
+      <button type="submit">Registrarse</button>
+    </form>
+
+    <p class="mensaje" id="registro-mensaje" role="status"></p>
+
+    <p>
+      ¿Ya tienes cuenta?
+      <a href="#" onclick="mostrarLogin(); return false;">
+        Inicia sesión
+      </a>
+    </p>
+  </section>
+
+  <!-- PANEL DE SOLICITUDES -->
+  <section id="app-section" class="contenedor">
     <h2>Panel de Solicitudes</h2>
+
     <p id="user-display"></p>
-    <button onclick="salir()">Cerrar sesión</button>
-    
-    <!-- Formulario de solicitudes -->
-    <br><br>
-    <input type="text" id="titulo" placeholder="Título de la solicitud">
-    <input type="number" id="monto" placeholder="Monto">
-    <button onclick="crearSolicitud()">Guardar Solicitud</button>
-  </div>
+
+    <button type="button" onclick="salir()">
+      Cerrar sesión
+    </button>
+
+    <hr>
+
+    <h3>Nueva solicitud</h3>
+
+    <form id="solicitud-form">
+      <input
+        type="text"
+        id="titulo"
+        placeholder="Título de la solicitud"
+        required
+      >
+
+      <input
+        type="number"
+        id="monto"
+        placeholder="Monto"
+        min="0.01"
+        max="99999999.99"
+        step="0.01"
+        required
+      >
+
+      <button type="submit">Guardar solicitud</button>
+    </form>
+
+    <p id="solicitud-mensaje" role="status"></p>
+  </section>
 
   <script>
-    function val(id) { return document.getElementById(id).value; }
-    function msg(id, texto, esExito) { 
-      document.getElementById(id).innerText = texto; 
-      document.getElementById(id).style.color = esExito ? 'green' : 'red'; 
+    // MOSTRAR MENSAJES
+    function mensaje(id, texto, exito) {
+      const elemento = document.getElementById(id);
+      elemento.textContent = texto;
+      elemento.style.color = exito ? "green" : "red";
     }
 
-    function mostrarApp() {
-      document.getElementById('auth-section').style.display = 'none';
-      document.getElementById('app-section').style.display = 'block';
+    // CAMBIAR ENTRE FORMULARIOS
+    function mostrarSeccion(id) {
+      ["login-section", "registro-section", "app-section"]
+        .forEach(seccion => {
+          document.getElementById(seccion).style.display =
+            seccion === id ? "block" : "none";
+        });
     }
 
-    // Al cargar la página, verifica la sesión activa
-    (async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (session) {
-        mostrarApp();
-        const { data: { user } } = await supabase.auth.getUser();
-        if(user) document.getElementById('user-display').innerText = "Conectado como: " + user.email;
+    function mostrarLogin() {
+      mostrarSeccion("login-section");
+    }
+
+    function mostrarRegistro() {
+      mostrarSeccion("registro-section");
+    }
+
+    // MOSTRAR PANEL
+    async function mostrarApp() {
+      const { data, error } = await supabase.auth.getUser();
+
+      if (error || !data.user) {
+        mostrarLogin();
+        return;
       }
-    })();
 
-    // Registrar cuenta
+      document.getElementById("user-display").textContent =
+        "Conectado como: " + data.user.email;
+
+      mostrarSeccion("app-section");
+    }
+
+    // REGISTRAR USUARIO
     async function registrar() {
-      const { error } = await supabase.auth.signUp({ email: val('email'), password: val('pass') });
-      if (error) return msg('ml', 'Error: ' + error.message, false);
-      msg('ml', 'Cuenta creada. Ya puedes iniciar sesión.', true);
-    }
+      const email = document.getElementById("registro-email")
+        .value.trim();
 
-    // Iniciar sesión
-    async function entrar() {
-      const { error } = await supabase.auth.signInWithPassword({ email: val('email'), password: val('pass') });
-      if (error) return msg('ml', 'Credenciales incorrectas', false);
-      mostrarApp();
-    }
+      const password = document.getElementById("registro-pass")
+        .value;
 
-    // Guardar solicitud asignando el correo
-    async function crearSolicitud() {
-      const titulo = val('titulo');
-      const monto = val('monto');
-      const { data: { user } } = await supabase.auth.getUser();
-      
-      const { error } = await supabase.from('solicitudes').insert({ 
-        titulo: titulo, 
-        monto: monto, 
-        usuario_email: user.email 
-      });
-      
-      if (error) {
-        alert('Error al guardar: ' + error.message);
-      } else {
-        alert('Solicitud guardada con éxito');
+      const confirmar = document.getElementById("confirmar-pass")
+        .value;
+
+      if (password !== confirmar) {
+        mensaje(
+          "registro-mensaje",
+          "Las contraseñas no coinciden.",
+          false
+        );
+        return;
+      }
+
+      if (password.length < 6) {
+        mensaje(
+          "registro-mensaje",
+          "La contraseña debe tener al menos 6 caracteres.",
+          false
+        );
+        return;
+      }
+
+      try {
+        const { data, error } = await supabase.auth.signUp({
+          email,
+          password
+        });
+
+        if (error) {
+          mensaje(
+            "registro-mensaje",
+            "Error: " + error.message,
+            false
+          );
+          return;
+        }
+
+        if (data.session) {
+          await mostrarApp();
+        } else {
+          mensaje(
+            "registro-mensaje",
+            "Registro procesado. Revisa tu correo si se requiere confirmación.",
+            true
+          );
+        }
+
+      } catch (error) {
+        mensaje(
+          "registro-mensaje",
+          "Error de conexión con Supabase.",
+          false
+        );
+        console.error(error);
       }
     }
 
-    // Cerrar sesión
-    async function salir() {
-      await supabase.auth.signOut();
-      location.reload();
+    // INICIAR SESIÓN
+    async function entrar() {
+      const email = document.getElementById("login-email")
+        .value.trim();
+
+      const password = document.getElementById("login-pass")
+        .value;
+
+      try {
+        const { error } = await supabase.auth.signInWithPassword({
+          email,
+          password
+        });
+
+        if (error) {
+          mensaje(
+            "login-mensaje",
+            "No se pudo iniciar sesión: " + error.message,
+            false
+          );
+          return;
+        }
+
+        await mostrarApp();
+
+      } catch (error) {
+        mensaje(
+          "login-mensaje",
+          "Error de conexión con Supabase.",
+          false
+        );
+        console.error(error);
+      }
     }
+
+    // GUARDAR SOLICITUD
+    async function crearSolicitud() {
+      const titulo = document.getElementById("titulo")
+        .value.trim();
+
+      const montoTexto = document.getElementById("monto")
+        .value;
+
+      const monto = Number(montoTexto);
+
+      if (
+        !titulo ||
+        !montoTexto ||
+        !Number.isFinite(monto) ||
+        monto <= 0 ||
+        monto > 99999999.99
+      ) {
+        mensaje(
+          "solicitud-mensaje",
+          "Ingresa un título y un monto válido.",
+          false
+        );
+        return;
+      }
+
+      try {
+        const { data, error: authError } =
+          await supabase.auth.getUser();
+
+        if (authError || !data.user) {
+          mostrarLogin();
+          return;
+        }
+
+        const { error } = await supabase
+          .from("solicitudes")
+          .insert({
+            titulo,
+            monto,
+            usuario_email: data.user.email
+          });
+
+        if (error) {
+          mensaje(
+            "solicitud-mensaje",
+            "Error al guardar: " + error.message,
+            false
+          );
+          return;
+        }
+
+        mensaje(
+          "solicitud-mensaje",
+          "Solicitud guardada correctamente.",
+          true
+        );
+
+        document.getElementById("solicitud-form").reset();
+
+      } catch (error) {
+        mensaje(
+          "solicitud-mensaje",
+          "Error de conexión.",
+          false
+        );
+        console.error(error);
+      }
+    }
+
+    // CERRAR SESIÓN
+    async function salir() {
+      const { error } = await supabase.auth.signOut();
+
+      if (error) {
+        alert("Error al cerrar sesión: " + error.message);
+        return;
+      }
+
+      document.getElementById("login-form").reset();
+      document.getElementById("registro-form").reset();
+
+      mostrarLogin();
+    }
+
+    // EVENTOS DE LOS FORMULARIOS
+    document.getElementById("login-form")
+      .addEventListener("submit", async e => {
+        e.preventDefault();
+        await entrar();
+      });
+
+    document.getElementById("registro-form")
+      .addEventListener("submit", async e => {
+        e.preventDefault();
+        await registrar();
+      });
+
+    document.getElementById("solicitud-form")
+      .addEventListener("submit", async e => {
+        e.preventDefault();
+        await crearSolicitud();
+      });
+
+    // COMPROBAR SESIÓN AL ABRIR LA PÁGINA
+    async function verificarSesion() {
+      try {
+        const { data, error } =
+          await supabase.auth.getSession();
+
+        if (!error && data.session) {
+          await mostrarApp();
+        } else {
+          mostrarLogin();
+        }
+      } catch (error) {
+        console.error(error);
+        mostrarLogin();
+      }
+    }
+
+    verificarSesion();
   </script>
 </body>
 </html>
