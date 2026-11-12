@@ -1,19 +1,99 @@
-
 <!doctype html>
 <html lang="es">
 <head>
   <meta charset="utf-8">
-  <title>Mi sitio</title>
+  <title>Portal de Solicitudes - Seguridad</title>
   <link rel="stylesheet" href="estilo.css">
+  
+  <!-- 1. Agrega esto en el head (la librería de Supabase y tu configuración) -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="supabase-config.js"></script>
 </head>
 <body>
-  <nav>
-    <a href="index.html">Inicio</a> ·
-    <a href="catalogo.html">Catálogo</a> ·
-    <a href="acerca.html">Acerca</a>
-  </nav>
 
-  <h1>Mi primer sitio web</h1>
-  <p>Hola, soy Sanchez Resendiz Angel Jesus. Esta es mi página de inicio.</p>
+  <!-- 2. Reemplaza todo el cuerpo por la sección de Auth y el Panel -->
+  <div id="auth-section">
+    <h2>Iniciar Sesión / Registro</h2>
+    <input type="email" id="email" placeholder="Correo electrónico">
+    <input type="password" id="pass" placeholder="Contraseña">
+    <br>
+    <button onclick="registrar()">Crear cuenta</button>
+    <button onclick="entrar()">Iniciar sesión</button>
+    <div id="ml"></div>
+  </div>
+
+  <div id="app-section" style="display:none;">
+    <h2>Panel de Solicitudes</h2>
+    <p id="user-display"></p>
+    <button onclick="salir()">Cerrar sesión</button>
+    
+    <!-- Formulario de solicitudes -->
+    <br><br>
+    <input type="text" id="titulo" placeholder="Título de la solicitud">
+    <input type="number" id="monto" placeholder="Monto">
+    <button onclick="crearSolicitud()">Guardar Solicitud</button>
+  </div>
+
+  <script>
+    function val(id) { return document.getElementById(id).value; }
+    function msg(id, texto, esExito) { 
+      document.getElementById(id).innerText = texto; 
+      document.getElementById(id).style.color = esExito ? 'green' : 'red'; 
+    }
+
+    function mostrarApp() {
+      document.getElementById('auth-section').style.display = 'none';
+      document.getElementById('app-section').style.display = 'block';
+    }
+
+    // Al cargar la página, verifica la sesión activa
+    (async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session) {
+        mostrarApp();
+        const { data: { user } } = await supabase.auth.getUser();
+        if(user) document.getElementById('user-display').innerText = "Conectado como: " + user.email;
+      }
+    })();
+
+    // Registrar cuenta[cite: 4]
+    async function registrar() {
+      const { error } = await supabase.auth.signUp({ email: val('email'), password: val('pass') });
+      if (error) return msg('ml', 'Error: ' + error.message, false);
+      msg('ml', 'Cuenta creada. Ya puedes iniciar sesión.', true);
+    }
+
+    // Iniciar sesión[cite: 4]
+    async function entrar() {
+      const { error } = await supabase.auth.signInWithPassword({ email: val('email'), password: val('pass') });
+      if (error) return msg('ml', 'Credenciales incorrectas', false);
+      mostrarApp();
+    }
+
+    // Guardar solicitud asignando el correo[cite: 4]
+    async function crearSolicitud() {
+      const titulo = val('titulo');
+      const monto = val('monto');
+      const { data: { user } } = await supabase.auth.getUser();
+      
+      const { error } = await supabase.from('solicitudes').insert({ 
+        titulo: titulo, 
+        monto: monto, 
+        usuario_email: user.email 
+      });
+      
+      if (error) {
+        alert('Error al guardar: ' + error.message);
+      } else {
+        alert('Solicitud guardada con éxito');
+      }
+    }
+
+    // Cerrar sesión[cite: 5]
+    async function salir() {
+      await supabase.auth.signOut();
+      location.reload();
+    }
+  </script>
 </body>
 </html>
